@@ -1,0 +1,10 @@
+{
+  "name": "erc6551-fun",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Justin Chow <justin@onomato.xyz>",
+  "license": "MIT",
+  "devDependencies": {
+    "hardhat": "^2.14.0"
+  }
+}
