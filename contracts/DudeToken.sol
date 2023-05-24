@@ -13,11 +13,27 @@ contract DudeToken is ERC721, Ownable {
 
     Counters.Counter private _tokenIdCounter;
 
+    struct Dude {
+        uint256 id;
+        string name;
+    }
+
+    Dude[] dudes;
+
+    event Minted(address indexed to, uint256 indexed tokenId, string name);
+
     constructor() ERC721("DudeToken", "DUDE") {}
 
-    function safeMint(address to) public onlyOwner {
+    function mintDude(address _to, string memory _name) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
+        _safeMint(_to, tokenId);
+
+        if (bytes(_name).length == 0) {
+            _name = "Unnamed generic dude";
+        }
+
+        dudes.push(Dude(tokenId, _name));
+        emit Minted(_to, tokenId, _name);
     }
 }
