@@ -14,10 +14,13 @@ describe("E2E", function () {
     const DudeToken = await ethers.getContractFactory("DudeToken");
     const dudeToken = await DudeToken.deploy();
 
+    const HatToken = await ethers.getContractFactory("HatToken");
+    const hatToken = await HatToken.deploy();
+
     const Registry = await ethers.getContractFactory("ERC6551Registry");
     const registry = await Registry.deploy();
 
-    const Account = await ethers.getContractFactory("SimpleERC6551Account");
+    const Account = await ethers.getContractFactory("DudeAccount");
     const implementation = await Account.deploy();
 
     const chainId = (await ethers.provider.getNetwork()).chainId;
@@ -27,15 +30,15 @@ describe("E2E", function () {
     const initData = "0x";
 
     return {
-      dudeToken, registry, implementation,
+      dudeToken, hatToken, registry, implementation,
       chainId, salt, initData,
       owner, alice, bob
     };
   }
 
   describe("Deployment", function () {
-    it("Should deploy all contracts", async function () {
-      const { dudeToken, registry, implementation, owner, alice, chainId, salt, initData } = await loadFixture(setupAndUtils);
+    it("Should deploy all contracts, and deploy a Token Bound Account for a Dude NFT", async function () {
+      const { dudeToken, registry, implementation, alice, chainId, salt, initData } = await loadFixture(setupAndUtils);
 ;
       const tokenId = 0;
 
@@ -63,6 +66,59 @@ describe("E2E", function () {
 
       // Assert interface support
       expect(await tokenBoundAccount.supportsInterface("0x400a0398")).to.equal(true);
+    });
+  });
+
+  describe("Alice's Dude", function () {
+    async function mintDudeAndCreateTokenBoundAccount() {
+      const {
+        dudeToken, hatToken, registry, implementation,
+        chainId, salt, initData,
+        owner, alice, bob
+      } = await loadFixture(setupAndUtils);
+
+      const aliceDudeTokenId = 0;
+      const aliceDudeTokenName = "Alice's Dude";
+
+      // Mint NFT
+      await dudeToken.mintDude(alice.address, aliceDudeTokenName);
+
+      // Create TokenBoundAccount for NFT
+      const tx = await registry.createAccount(implementation.address, chainId, dudeToken.address, aliceDudeTokenId, salt, initData);
+      // Calculate Address for Account
+      const aliceDudeTokenBoundAccountAddress = await registry.account(implementation.address, chainId, dudeToken.address, aliceDudeTokenId, salt);
+      const aliceDudeTokenBoundAccount = await implementation.attach(aliceDudeTokenBoundAccountAddress);
+
+      return {
+        dudeToken, hatToken, registry, implementation,
+        chainId, salt, initData,
+        owner, alice, bob,
+        aliceDudeTokenId, aliceDudeTokenName, aliceDudeTokenBoundAccount
+      };
+    }
+
+    it("Mint Hat directly to Dude's account", async function () {
+      const {
+        hatToken, aliceDudeTokenBoundAccount
+      } = await loadFixture(mintDudeAndCreateTokenBoundAccount);
+
+      // Mint Hat directly to Dude
+      await hatToken.mint(aliceDudeTokenBoundAccount.address, "Alice's Dude's Hat");
+      expect(await hatToken.ownerOf(0)).to.equal(aliceDudeTokenBoundAccount.address);
+    });
+
+    it("Mint Hat to OG owner, then transfer to Dude's account", async function () {
+      const {
+        dudeToken, hatToken, registry, implementation,
+        chainId, salt, initData,
+        owner, alice, bob,
+        aliceDudeTokenId, aliceDudeTokenName, aliceDudeTokenBoundAccount
+      } = await loadFixture(mintDudeAndCreateTokenBoundAccount);
+
+      // Mint Hat directly to owner first
+      await hatToken.mint(owner.address, "");
+      await hatToken.transferFrom(owner.address, aliceDudeTokenBoundAccount.address, 0);
+      expect(await hatToken.ownerOf(0)).to.equal(aliceDudeTokenBoundAccount.address);
     });
   });
 });
