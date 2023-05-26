@@ -29,14 +29,16 @@ contract ERC6551Registry is IERC6551Registry {
 
         if (_account.code.length != 0) return _account;
 
-        emit AccountCreated(_account, implementation, chainId, tokenContract, tokenId, salt);
-
         _account = Create2.deploy(0, bytes32(salt), code);
 
         if (initData.length != 0) {
             (bool success, ) = _account.call(initData);
             if (!success) revert InitializationFailed();
         }
+
+        // Moved from the original reference.
+        // Why emit before checking if the account is successfully deployed?
+        emit AccountCreated(_account, implementation, chainId, tokenContract, tokenId, salt);
 
         return _account;
     }
