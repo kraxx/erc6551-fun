@@ -7,7 +7,7 @@ describe("E2E", function () {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshot in every test.
-  async function deployAll() {
+  async function setupAndUtils() {
     // Contracts are deployed using the first signer/account by default
     const [owner, alice, bob] = await ethers.getSigners();
 
@@ -18,32 +18,51 @@ describe("E2E", function () {
     const registry = await Registry.deploy();
 
     const Account = await ethers.getContractFactory("SimpleERC6551Account");
-    const tokenAccount = await Account.deploy();
+    const implementation = await Account.deploy();
 
-    return { dudeToken, registry, tokenAccount, owner, alice, bob };
+    const chainId = (await ethers.provider.getNetwork()).chainId;
+    const salt = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+    // Question: why does passing any data cause an error when the implementation is our SimpleERC6551Account?
+    // It passes when we use some fake implementation, such as 0xbebebebebebebebebebebebebebebebebebebebe.
+    const initData = "0x";
+
+    return {
+      dudeToken, registry, implementation,
+      chainId, salt, initData,
+      owner, alice, bob
+    };
   }
 
   describe("Deployment", function () {
     it("Should deploy all contracts", async function () {
-      const { dudeToken, registry, tokenAccount, owner, alice } = await loadFixture(deployAll);
-
-      const implementation = tokenAccount.address;
-      const chainId = (await ethers.provider.getNetwork()).chainId;
+      const { dudeToken, registry, implementation, owner, alice, chainId, salt, initData } = await loadFixture(setupAndUtils);
+;
       const tokenId = 0;
-      const salt = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-      // Question: why does passing any data cause an error when the implementation is our SimpleERC6551Account?
-      // It passes when we use some fake implementation, such as 0xbebebebebebebebebebebebebebebebebebebebe.
-      const initData = "0x";
 
+      // Mint NFT
       await dudeToken.mintDude(alice.address, "Alice's Dude");
 
-      const tx = await registry.createAccount(implementation, chainId, dudeToken.address, tokenId, salt, initData);
-      const createdAccount = await registry.account(implementation, chainId, dudeToken.address, tokenId, salt);
-      await expect(tx).to.emit(registry, "AccountCreated").withArgs(createdAccount, implementation, chainId, dudeToken.address, tokenId, salt);
-      expect(await ethers.provider.getCode(createdAccount)).to.exist;
+      // Create TokenBoundAccount for NFT
+      const tx = await registry.createAccount(implementation.address, chainId, dudeToken.address, tokenId, salt, initData);
+      // Calculate Address for Account
+      const tbaAddress = await registry.account(implementation.address, chainId, dudeToken.address, tokenId, salt);
+      // Assert event emitted with the correct address
+      await expect(tx).to.emit(registry, "AccountCreated").withArgs(tbaAddress, implementation.address, chainId, dudeToken.address, tokenId, salt);
+      // Assert actual creation
+      expect(await ethers.provider.getCode(tbaAddress)).to.exist;
 
-      const dudeTokenAccount = await tokenAccount.attach(createdAccount);
-      expect(await dudeTokenAccount.owner()).to.equal(alice.address);
+      // Assert Alice owns the TokenBoundAccount
+      const tokenBoundAccount = await implementation.attach(tbaAddress);
+      expect(await tokenBoundAccount.owner()).to.equal(alice.address);
+
+      // Assert token details of the TokenBoundAccount
+      const tokenData = await tokenBoundAccount.token();
+      expect(tokenData[0]).to.equal(chainId);
+      expect(tokenData[1]).to.equal(dudeToken.address);
+      expect(tokenData[2]).to.equal(tokenId);
+
+      // Assert interface support
+      expect(await tokenBoundAccount.supportsInterface("0x400a0398")).to.equal(true);
     });
   });
 });
