@@ -81,5 +81,57 @@ describe("HatToken", function () {
       await expect(hatToken.connect(alice).transferFrom(alice.address, bob.address, aliceTokenId))
         .to.be.revertedWith("Account's token limit reached");
     });
+
+    describe("Swap", function () {
+      it("should swap tokens between two accounts", async function () {
+        const { hatToken, alice, bob } = await loadFixture(setup);
+
+        const aliceTokenId = 0;
+        const bobTokenId = 1;
+
+        await hatToken.mint(alice.address, "");
+        await hatToken.mint(bob.address, "");
+
+        await hatToken.connect(alice).approve(bob.address, aliceTokenId);
+        await hatToken.connect(bob).approve(alice.address, bobTokenId);
+
+        // Swap and assert
+        const tx = await hatToken.connect(alice).swapTokens(alice.address, bob.address, aliceTokenId, bobTokenId);
+        await expect(tx).to.emit(hatToken, "Transfer").withArgs(alice.address, bob.address, aliceTokenId);
+        await expect(tx).to.emit(hatToken, "Transfer").withArgs(bob.address, alice.address, bobTokenId);
+
+        expect(await hatToken.ownerOf(aliceTokenId)).to.equal(bob.address);
+        expect(await hatToken.ownerOf(bobTokenId)).to.equal(alice.address);
+      });
+
+      it("should not swap if not both approved", async function () {
+        const { hatToken, alice, bob } = await loadFixture(setup);
+
+        const aliceTokenId = 0;
+        const bobTokenId = 1;
+
+        await hatToken.mint(alice.address, "");
+        await hatToken.mint(bob.address, "");
+
+        await hatToken.connect(alice).approve(bob.address, aliceTokenId);
+
+        await expect(hatToken.swapTokens(alice.address, bob.address, aliceTokenId, bobTokenId))
+          .to.be.revertedWith("Token not approved for swap");
+      });
+
+      it("should not swap if a token is missing", async function () {
+        const { hatToken, alice, bob } = await loadFixture(setup);
+
+        const aliceTokenId = 0;
+        const bobTokenId = 1;
+
+        await hatToken.mint(alice.address, "");
+
+        await hatToken.connect(alice).approve(bob.address, aliceTokenId);
+
+        await expect(hatToken.swapTokens(alice.address, bob.address, aliceTokenId, bobTokenId))
+          .to.be.revertedWith("ERC721: invalid token ID");
+      });
+    });
   });
 });
