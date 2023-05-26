@@ -78,7 +78,7 @@ describe("HatToken", function () {
       await hatToken.mint(alice.address, "");
       await hatToken.mint(bob.address, "");
 
-      await expect(hatToken.transferFrom(alice.address, bob.address, aliceTokenId))
+      await expect(hatToken.connect(alice).transferFrom(alice.address, bob.address, aliceTokenId))
         .to.be.revertedWith("Account already has a token, only one allowed");
     });
   });
