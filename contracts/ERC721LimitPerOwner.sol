@@ -9,16 +9,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 // Experimental contract that restricts an ERC721 implementation to only allow one token per owner.
-abstract contract ERC721OnePerOwner is ERC721 {
-    // Applied to all ERC721 transfers
-    modifier onePerOwner(address _account) {
-        require(
-            balanceOf(_account) == 0,
-            "Account already has a token, only one allowed"
-        );
-        _;
+abstract contract ERC721LimitPerOwner is ERC721 {
+    uint256 private limit = 1;
+
+    constructor(uint256 _limit) {
+        limit = _limit;
     }
 
-    // NOTE: might only need this.
-    function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize) internal virtual override onePerOwner(to) {}
+    // Applied to all ERC721 transfers
+    function _beforeTokenTransfer(address, address to, uint256, uint256) internal virtual override {
+        require(
+            balanceOf(to) < limit,
+            "Account's token limit reached"
+        );
+    }
 }

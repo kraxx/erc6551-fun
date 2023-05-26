@@ -4,14 +4,14 @@ pragma solidity ^0.8.9;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-import "./ERC721OnePerOwner.sol";
+import "./ERC721LimitPerOwner.sol";
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 // These hats are special. Only one per owner.
-contract HatToken is ERC721OnePerOwner, Ownable {
+contract HatToken is ERC721LimitPerOwner, Ownable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
@@ -25,7 +25,7 @@ contract HatToken is ERC721OnePerOwner, Ownable {
 
     event Minted(address indexed to, uint256 indexed tokenId, string name);
 
-    constructor() ERC721("HatToken", "HAT") {}
+    constructor() ERC721LimitPerOwner(1) ERC721("HatToken", "HAT") {}
 
     function mint(address _to, string memory _name) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();

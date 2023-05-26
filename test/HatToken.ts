@@ -52,7 +52,7 @@ describe("HatToken", function () {
       await hatToken.mint(alice.address, "");
       // Mint 2x
       await expect(hatToken.mint(alice.address, ""))
-        .to.be.revertedWith("Account already has a token, only one allowed");
+        .to.be.revertedWith("Account's token limit reached");
     });
   });
 
@@ -79,7 +79,7 @@ describe("HatToken", function () {
       await hatToken.mint(bob.address, "");
 
       await expect(hatToken.connect(alice).transferFrom(alice.address, bob.address, aliceTokenId))
-        .to.be.revertedWith("Account already has a token, only one allowed");
+        .to.be.revertedWith("Account's token limit reached");
     });
   });
 });
