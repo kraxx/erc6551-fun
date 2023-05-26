@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+// These hats are special. Only one per owner.
 contract HatToken is ERC721OnePerOwner, Ownable {
     using Counters for Counters.Counter;
 
@@ -26,7 +27,7 @@ contract HatToken is ERC721OnePerOwner, Ownable {
 
     constructor() ERC721("HatToken", "HAT") {}
 
-    function mintDude(address _to, string memory _name) public onlyOwner {
+    function mint(address _to, string memory _name) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(_to, tokenId);

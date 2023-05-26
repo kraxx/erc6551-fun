@@ -48,78 +48,90 @@ describe("DudeToken", function () {
     it("Should fail if non-owner tries to mint", async function () {
       const { dudeToken, alice } = await loadFixture(deployDudeToken);
 
-      // const tx = await dudeToken.mintDude(alice.address, "Alice's Dude", { from: alice.address });
-      await expect(
-        dudeToken.connect(alice).mintDude(alice.address, "Alice's Dude"))
-        .to.be.revertedWith("Ownable: caller is not the owner"
-      );
+      await expect(dudeToken.connect(alice).mintDude(alice.address, "Alice's Dude"))
+        .to.be.revertedWith("Ownable: caller is not the owner");
       expect(await dudeToken.balanceOf(alice.address)).to.equal(0);
+    });
+
+    it("Should mint with default name on not providing name", async function () {
+      const { dudeToken, owner } = await loadFixture(deployDudeToken);
+      const tokenId = 0;
+
+      const tx = await dudeToken.mintDude(owner.address, "");
+      expect((await dudeToken.dudes(tokenId)).name).to.equal("Unnamed generic dude");
     });
   });
 
-//   describe("Withdrawals", function () {
-//     describe("Validations", function () {
-//       it("Should revert with the right error if called too soon", async function () {
-//         const { lock } = await loadFixture(deployOneYearLockFixture);
+  describe("Transfers", function () {
+    it("Should transfer token from one account to another", async function () {
+      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
+      const name = "Alice's Dude";
+      const tokenId = 0;
 
-//         await expect(lock.withdraw()).to.be.revertedWith(
-//           "You can't withdraw yet"
-//         );
-//       });
+      await dudeToken.mintDude(alice.address, name);
+      const tx = dudeToken.connect(alice).transferFrom(alice.address, bob.address, tokenId);
+      await expect(tx).to.emit(dudeToken, "Transfer").withArgs(alice.address, bob.address, tokenId);
 
-//       it("Should revert with the right error if called from another account", async function () {
-//         const { lock, unlockTime, otherAccount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      expect(await dudeToken.balanceOf(alice.address)).to.equal(0);
+      expect(await dudeToken.balanceOf(bob.address)).to.equal(1);
+      expect(await dudeToken.ownerOf(tokenId)).to.equal(bob.address);
+      expect((await dudeToken.dudes(tokenId)).name).to.equal(name);
+    });
 
-//         // We can increase the time in Hardhat Network
-//         await time.increaseTo(unlockTime);
+    it("Should transfer token from one account to another using approval method", async function () {
+      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
+      const name = "Alice's Dude";
+      const tokenId = 0;
 
-//         // We use lock.connect() to send a transaction from another account
-//         await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-//           "You aren't the owner"
-//         );
-//       });
+      await dudeToken.mintDude(alice.address, name);
+      let tx = dudeToken.connect(alice).approve(bob.address, tokenId);
+      await expect(tx).to.emit(dudeToken, "Approval").withArgs(alice.address, bob.address, tokenId);
 
-//       it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-//         const { lock, unlockTime } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      // Bob can now transfer the token
+      tx = await dudeToken.connect(bob).transferFrom(alice.address, bob.address, tokenId);
+      await expect(tx).to.emit(dudeToken, "Transfer").withArgs(alice.address, bob.address, tokenId);
 
-//         // Transactions are sent using the first signer by default
-//         await time.increaseTo(unlockTime);
+      expect(await dudeToken.balanceOf(alice.address)).to.equal(0);
+      expect(await dudeToken.balanceOf(bob.address)).to.equal(1);
+      expect(await dudeToken.ownerOf(tokenId)).to.equal(bob.address);
+      expect((await dudeToken.dudes(tokenId)).name).to.equal(name);
+    });
 
-//         await expect(lock.withdraw()).not.to.be.reverted;
-//       });
-//     });
+    it("Should fail to transfer token if not sent from owner", async function () {
+      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
+      const name = "Alice's Dude";
+      const tokenId = 0;
 
-//     describe("Events", function () {
-//       it("Should emit an event on withdrawals", async function () {
-//         const { lock, unlockTime, lockedAmount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      await dudeToken.mintDude(alice.address, name);
+      await expect(dudeToken.transferFrom(alice.address, bob.address, tokenId))
+        .to.be.revertedWith("ERC721: caller is not token owner or approved");
+    });
 
-//         await time.increaseTo(unlockTime);
+    it("Should fail to transfer token if token doesn't exist", async function () {
+      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
+      const tokenId = 0;
 
-//         await expect(lock.withdraw())
-//           .to.emit(lock, "Withdrawal")
-//           .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-//       });
-//     });
+      await expect(dudeToken.connect(alice).transferFrom(alice.address, bob.address, tokenId))
+        .to.be.revertedWith("ERC721: invalid token ID");
+    });
 
-//     describe("Transfers", function () {
-//       it("Should transfer the funds to the owner", async function () {
-//         const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+    it("Should fail to transfer token if token doesn't exist", async function () {
+      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
+      const tokenId = 0;
 
-//         await time.increaseTo(unlockTime);
+      await expect(dudeToken.connect(alice).transferFrom(alice.address, bob.address, tokenId))
+        .to.be.revertedWith("ERC721: invalid token ID");
+    });
 
-//         await expect(lock.withdraw()).to.changeEtherBalances(
-//           [owner, lock],
-//           [lockedAmount, -lockedAmount]
-//         );
-//       });
-//     });
-//   });
+    describe("Burn", function () {
+      it("Cannot burn token", async function () {
+        const { dudeToken, owner } = await loadFixture(deployDudeToken);
+        const tokenId = 0;
+
+        await dudeToken.mintDude(owner.address, "");
+        await expect(dudeToken.transferFrom(owner.address, ethers.constants.AddressZero, tokenId))
+          .to.be.revertedWith("ERC721: transfer to the zero address");
+      });
+    });
+  });
 });
