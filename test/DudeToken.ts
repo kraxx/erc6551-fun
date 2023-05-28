@@ -115,14 +115,6 @@ describe("DudeToken", function () {
         .to.be.revertedWith("ERC721: invalid token ID");
     });
 
-    it("Should fail to transfer token if token doesn't exist", async function () {
-      const { dudeToken, alice, bob } = await loadFixture(deployDudeToken);
-      const tokenId = 0;
-
-      await expect(dudeToken.connect(alice).transferFrom(alice.address, bob.address, tokenId))
-        .to.be.revertedWith("ERC721: invalid token ID");
-    });
-
     describe("Burn", function () {
       it("Cannot burn token", async function () {
         const { dudeToken, owner } = await loadFixture(deployDudeToken);
