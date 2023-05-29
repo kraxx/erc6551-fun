@@ -1,19 +1,25 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  const DudeToken = await ethers.getContractFactory("DudeToken");
+  const dudeToken = await DudeToken.deploy();
+  await dudeToken.deployed();
+  console.log(`DudeToken deployed to ${dudeToken.address}`);
 
-  const lockedAmount = ethers.utils.parseEther("0.001");
+  const HatToken = await ethers.getContractFactory("HatToken");
+  const hatToken = await HatToken.deploy();
+  await hatToken.deployed();
+  console.log(`HatToken deployed to ${hatToken.address}`);
 
-  const Lock = await ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+  const ERC6551Registry = await ethers.getContractFactory("ERC6551Registry");
+  const registry = await ERC6551Registry.deploy();
+  await registry.deployed();
+  console.log(`ERC6551Registry deployed to ${registry.address}`);
 
-  await lock.deployed();
-
-  console.log(
-    `Lock with ${ethers.utils.formatEther(lockedAmount)}ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+  const DudeAccount = await ethers.getContractFactory("DudeAccount");
+  const dudeAccount = await DudeAccount.deploy();
+  await dudeAccount.deployed();
+  console.log(`DudeAccount deployed to ${dudeAccount.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
